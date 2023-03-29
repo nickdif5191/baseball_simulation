@@ -33,34 +33,51 @@ class AtBat():
 
 
 class HalfInning():
-    def __init__(self, env, batting_team, pitching_team):
+    def __init__(self, env, batting_lineup, pitchers):
         self.env = env
-        self.batting_team = batting_team
-        self.pitching_team = pitching_team
+        # necessary information for a half inning to be simulated
+        self.batting_lineup = batting_lineup
+        self.pitchers = pitchers
+        # initialize the inning itself
         self.num_outs = 0
         self.runs_scored = 0
         self.at_bats = []
         self.first_base = simpy.Resource(env, 1)
         self.second_base = simpy.Resource(env, 1)
         self.third_base = simpy.Resource(env, 1)
+        self.home_plate = simpy.Resource(env, 1)
+
+    # def increment_hitter(self):
 
     def sim_half_inning(self):
         while self.num_outs < 4:
             # simulate the next at bat
+            batter = self.batting_lineup[0]
+            pitcher = self.pitchers[0]
+            at_bat = AtBat(self.env, batter, pitcher)
+
     
 
 class Game():
-    def __init__(self, env, team_names, batting_lineups, pitchers, score):
+    def __init__(self, env, home_team_name, away_team_name, batting_lineups, pitchers, score):
         self.env = env
-        self.team_names = team_names
-        self.batting_lineups = batting_lineups 
-        self.pitchers = pitchers
+        self.home_team = home_team_name
+        self.away_team = away_team_name
+        self.batting_lineups = batting_lineups # dictionary where key is the team name and item is a list of the batting order 
+        self.pitchers = pitchers # dictionary where key is the team name and item is a list of all available pitchers (first one is the starter)
         self.score = score
         self.half_innings_complete = 0
     
+    #def switch_hitting_fielding_teams(self.home_team, self.away_team):
+        
+
     def sim_game(self):
         while self.half_innings_complete < 19:
             # simulate the next half inning
+            batting_team = self.away_team
+            pitching_team = self.home_team
+            half_inning = HalfInning(self.env, batting_team, pitching_team)
+            yield half_inning.sim_half_inning
 
 
 
