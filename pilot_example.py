@@ -1,25 +1,31 @@
 import simpy 
+import pandas as pd
 
 
 class Pilot():
-    def __init__(self, env, id, yrs_exp, delta_trainings, curr_proficiency, target_proficiency, training_resources):
+    def __init__(self, env, id, yrs_exp, curr_proficiency, target_proficiency, training_resources):
         self.env = env
         self.id = id
         self.yrs_exp = yrs_exp
-        self.delta_trainings = delta_trainings
         self.curr_proficiency = curr_proficiency
         self.target_proficiency = target_proficiency
+        self.delta_training = TrainingEvent(env, "training_01", 3) # trainings needed to get to next proficiency level
         self.training_resources = training_resources # the training resources available to this pilot
+        env.process(self.request_training_resource(env, training_resources.fms_1, self.delta_training))
 
     def request_training_resource(self, env, resource, training_event):
-        with resource.request() as req:
-            print(f"{self.id} requesting {resource.name} at {env.now}")
+        print(f"{self.id}: requesting resource at {env.now}")
+        with resource.request(priority=self.yrs_exp*-1) as req:
             yield req
+            print(f"{self.id}: granted resource at {env.now}")
+            '''print(dir(resource))
+            print(resource.users)
+            print(resource.get_queue)'''
             print(f"{self.id} beginning {training_event.name} at {env.now}")
             yield env.timeout(training_event.duration)
             print(f"{self.id} completed {training_event.name} at {env.now}")
 
-class FMS(simpy.Resource):
+class FMS(simpy.PriorityResource):
     def __init__(self, env, capacity, name):
         super().__init__(env, capacity=capacity)
         self.name = name
@@ -43,15 +49,15 @@ class TrainingResources():
 def use_resources(env):
     training_resources = TrainingResources(env) # define training resources available
     # basic simulation info
-    training_01 = TrainingEvent(env, "training_01", 3)
-    training_02 = TrainingEvent(env, "training_02", 5)
-    delta_trainings = [training_01, training_02] # trainings the pilot still needs to do
-    # create our pilot
-    pilot_1 = Pilot(env, "Pilot 01", 8.8, delta_trainings, "tr2_blk3", "tr3_blk4", training_resources)
-    pilot_2 = Pilot(env, "Pilot 02", 9.0, delta_trainings, "tr2_blk3", "tr3_blk4", training_resources)
-    # have the pilot request to use the FMS 
-    env.process(pilot_1.request_training_resource(env, training_resources.fms_1, delta_trainings[0]))
-    env.process(pilot_2.request_training_resource(env, training_resources.fms_1, delta_trainings[0]))
+    # training_01 = TrainingEvent(env, "training_01", 3)
+    # delta_trainings = [training_01] # trainings the pilot still needs to do
+
+    pilots_synthetic = pd.read_csv("synthetic_pilot_data.csv")
+    pilots_synthetic = pilots_synthetic.sort_values(by='Yrs_Exp_Initial', ascending=False)
+
+    for index, row in pilots_synthetic.iterrows():
+        pilot = Pilot(env, row['Pilot_ID'], row['Yrs_Exp_Initial'], row['Rating_Initial'], 'tr3_blk4', training_resources)
+
 
 
 env = simpy.Environment() # create the environment
